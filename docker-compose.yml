@@ -1,0 +1,167 @@
+# =============================================================================
+# Kasm Multi-OS Desktop Lab + MCP control plane
+# -----------------------------------------------------------------------------
+#  portal        :3000  -> landing page linking to every desktop
+#  linux         :6901  -> Ubuntu 24.04 XFCE (KasmVNC, HTTPS)
+#  windows       :6902  -> Wine app sandbox, Windows 95-style theme (KasmVNC)
+#  macos         :6903  -> macOS-themed XFCE dev desktop, Node 22 (KasmVNC)
+#  mcp-server    :8811  -> MCP (Streamable HTTP) at /mcp, bearer-token auth
+#  docker-proxy  (internal only) -> least-privilege Docker API for mcp-server
+#
+# Run ./setup.sh rather than `docker compose up` directly: it creates the
+# external network, the shared folder, and .env secrets first.
+# =============================================================================
+
+name: kasm-mcp
+
+x-desktop: &desktop
+  restart: unless-stopped
+  shm_size: "${DESKTOP_SHM_SIZE:-1gb}"        # >=512m required for Chrome/GL
+  environment:
+    VNC_PW: "${VNC_PW:?run ./setup.sh to generate .env}"
+    TZ: "${TZ:-UTC}"
+  volumes:
+    - ./shared:/home/kasm-user/shared
+  networks: [desktops]
+  deploy:
+    resources:
+      limits:
+        cpus: "${DESKTOP_CPUS:-2}"
+        memory: "${DESKTOP_MEMORY:-4g}"
+  healthcheck:
+    # KasmVNC listening on 6901 == healthy (no curl dependency in the image).
+    test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6901' || exit 1"]
+    interval: 15s
+    timeout: 5s
+    retries: 20
+    start_period: 30s
+
+services:
+  # ---------------------------------------------------------------- portal ---
+  portal:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${PORTAL_PORT:-3000}:3000"
+    volumes:
+      - ./portal/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./portal/index.html:/usr/share/nginx/html/index.html:ro
+    networks: [desktops]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------- linux ----
+  linux:
+    <<: *desktop
+    build:
+      context: ./images/linux
+      args:
+        KASM_TAG: "${KASM_TAG:-1.18.0}"
+    image: kasm-mcp/linux:${KASM_TAG:-1.18.0}
+    hostname: linux-desktop
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${LINUX_PORT:-6901}:6901"
+    labels:
+      mcp.managed: "true"
+      mcp.env_id: "linux"
+      mcp.os: "Ubuntu 24.04 XFCE (KasmVNC)"
+
+  # -------------------------------------------------------------- windows ----
+  windows:
+    <<: *desktop
+    build:
+      context: ./images/windows
+      args:
+        KASM_TAG: "${KASM_TAG:-1.18.0}"
+    image: kasm-mcp/windows:${KASM_TAG:-1.18.0}
+    hostname: windows-sandbox
+    environment:
+      VNC_PW: "${VNC_PW:?run ./setup.sh to generate .env}"
+      TZ: "${TZ:-UTC}"
+      WINEPREFIX: /home/kasm-user/.wine
+      WINEARCH: win64
+      WINEDEBUG: "-all"
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${WINDOWS_PORT:-6902}:6901"
+    labels:
+      mcp.managed: "true"
+      mcp.env_id: "windows"
+      mcp.os: "Wine on Ubuntu 24.04, Windows-style theme (KasmVNC)"
+
+  # ---------------------------------------------------------------- macos ----
+  macos:
+    <<: *desktop
+    build:
+      context: ./images/macos
+      args:
+        KASM_TAG: "${KASM_TAG:-1.18.0}"
+        NODE_MAJOR: "${NODE_MAJOR:-22}"
+    image: kasm-mcp/macos:${KASM_TAG:-1.18.0}
+    hostname: macos-dev
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${MACOS_PORT:-6903}:6901"
+    labels:
+      mcp.managed: "true"
+      mcp.env_id: "macos"
+      mcp.os: "macOS-themed XFCE on Ubuntu 24.04, Node.js dev stack (KasmVNC)"
+
+  # ---------------------------------------------------------- docker-proxy ---
+  # The MCP server never sees the raw Docker socket. Only container
+  # list/inspect/logs/exec/start/stop/restart are allowed through.
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest   # pin a digest in production
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      EXEC: 1
+      POST: 1
+      ALLOW_START: 1
+      ALLOW_STOP: 1
+      ALLOW_RESTARTS: 1
+      IMAGES: 0
+      NETWORKS: 0
+      VOLUMES: 0
+      BUILD: 0
+      SWARM: 0
+      SERVICES: 0
+      SECRETS: 0
+      SYSTEM: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [docker-api]
+
+  # ------------------------------------------------------------ mcp-server ---
+  mcp-server:
+    build: ./mcp-server
+    image: kasm-mcp/mcp-server:latest
+    restart: unless-stopped
+    depends_on: [docker-proxy]
+    environment:
+      DOCKER_HOST: tcp://docker-proxy:2375
+      MCP_AUTH_TOKEN: "${MCP_AUTH_TOKEN:?run ./setup.sh to generate .env}"
+      MCP_PORT: 8811
+      MCP_MAX_OUTPUT_CHARS: "${MCP_MAX_OUTPUT_CHARS:-20000}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${MCP_PORT:-8811}:8811"
+    volumes:
+      - ./shared:/shared
+    networks: [desktops, docker-api]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8811/healthz',timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+networks:
+  desktops:
+    name: "${DOCKER_NETWORK:-kasm-mcp-net}"
+    external: true
+  docker-api:
+    internal: true

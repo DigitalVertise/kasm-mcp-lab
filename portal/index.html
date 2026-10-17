@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desktop Lab</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#15171a; --muted:#5d6470; --line:#e3e6ea; --accent:#2f6fed; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111317; --card:#1a1d23; --ink:#eceef1; --muted:#9aa2ad; --line:#2a2e36; --accent:#6c9bff; } }
+  * { box-sizing:border-box }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:880px; margin:0 auto; padding:32px 16px 48px; }
+  h1 { font-size:22px; margin:0 0 4px } p.sub { color:var(--muted); margin:0 0 24px }
+  .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+  a.card { display:block; text-decoration:none; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  a.card:hover { border-color:var(--accent) }
+  .card b { display:block; font-size:16px } .card span { color:var(--muted); font-size:13px }
+  .card code { display:inline-block; margin-top:8px; font-size:12px; color:var(--accent) }
+  section { margin-top:28px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  section h2 { font-size:15px; margin:0 0 8px } section code { word-break:break-all }
+</style>
+</head>
+<body>
+<main>
+  <h1>Desktop Lab</h1>
+  <p class="sub">Streamed desktops (KasmVNC). Sign in as <code>kasm_user</code> with the <code>VNC_PW</code> from <code>.env</code>.</p>
+  <div class="grid">
+    <a class="card" data-port="6901"><b>Linux</b><span>Ubuntu 24.04 · XFCE</span><code></code></a>
+    <a class="card" data-port="6902"><b>Windows apps</b><span>Wine sandbox · Windows-style theme</span><code></code></a>
+    <a class="card" data-port="6903"><b>macOS-style dev</b><span>WhiteSur theme · Node.js · VS Code</span><code></code></a>
+  </div>
+  <section>
+    <h2>MCP endpoint for agents</h2>
+    <code id="mcp"></code>
+    <p class="sub" style="margin:8px 0 0">Send <code>Authorization: Bearer &lt;MCP_AUTH_TOKEN&gt;</code>. See README for Claude Desktop, Claude Code and claude.ai setup.</p>
+  </section>
+</main>
+<script>
+  // Codespaces forwards ports as https://<name>-<port>.<domain>; locally use localhost:<port>.
+  function urlFor(port, scheme) {
+    var h = location.hostname, m = h.match(/^(.*)-3000\.(.+)$/);
+    if (m) return "https://" + m[1] + "-" + port + "." + m[2] + "/";
+    return scheme + "://" + (h || "localhost") + ":" + port + "/";
+  }
+  document.querySelectorAll("a.card").forEach(function (a) {
+    var u = urlFor(a.dataset.port, "https");
+    a.href = u; a.target = "_blank"; a.rel = "noopener"; a.querySelector("code").textContent = u;
+  });
+  document.getElementById("mcp").textContent = urlFor(8811, location.protocol.replace(":", "")) + "mcp";
+</script>
+</body>
+</html>
