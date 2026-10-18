@@ -27,7 +27,7 @@ x-desktop: &desktop
     resources:
       limits:
         cpus: "${DESKTOP_CPUS:-2}"
-        memory: "${DESKTOP_MEMORY:-4g}"
+        memory: "${DESKTOP_MEMORY:-3g}"
   healthcheck:
     # KasmVNC listening on 6901 == healthy (no curl dependency in the image).
     test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6901' || exit 1"]

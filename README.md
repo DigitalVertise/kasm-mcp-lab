@@ -26,7 +26,7 @@ Every desktop gets 1 GB `/dev/shm` (`DESKTOP_SHM_SIZE`), above the 512 MB minimu
 ## 1. Quick start in a GitHub Codespace
 
 1. Push this folder to a GitHub repo.
-2. **Code → Codespaces → ⋯ → New with options**, pick an **8-core / 32 GB** machine (16 GB works if you lower `DESKTOP_MEMORY` to `3g`). The included `.devcontainer` adds Docker-in-Docker and the GitHub CLI and forwards every port.
+2. **Code → Codespaces → ⋯ → New with options**, pick the **4-core / 16 GB** machine or larger. The included `.devcontainer` adds Docker-in-Docker and the GitHub CLI and forwards every port.
 3. In the Codespace terminal:
 
    ```bash
@@ -194,7 +194,7 @@ GitHub Codespaces has no KVM, so full Windows or macOS VMs aren't possible, and 
 | `BIND_ADDR` | `127.0.0.1` | Use `0.0.0.0` only behind a firewall |
 | `*_PORT` | 3000 / 6901–6903 / 8811 | Host ports |
 | `DESKTOP_SHM_SIZE` | `1gb` | Keep it at 512m or more |
-| `DESKTOP_CPUS` / `DESKTOP_MEMORY` | `2` / `4g` | Per-desktop limits |
+| `DESKTOP_CPUS` / `DESKTOP_MEMORY` | `2` / `3g` | Per-desktop limits |
 | `MCP_MAX_OUTPUT_CHARS` | `20000` | Truncation for exec and log output |
 | `TZ` | `Africa/Cairo` | Desktop time zone |
 
