@@ -1,3 +1,4 @@
 .env
 shared/*
 !shared/.gitkeep
+LOGIN.txt

@@ -2,20 +2,64 @@
   "name": "Kasm Multi-OS Desktop Lab + MCP",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": true, "dockerDashComposeVersion": "v2" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    },
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "hostRequirements": { "cpus": 4, "memory": "16gb", "storage": "32gb" },
-  "forwardPorts": [3000, 6901, 6902, 6903, 8811],
-  "portsAttributes": {
-    "3000": { "label": "Portal", "protocol": "http", "onAutoForward": "openBrowserOnce" },
-    "6901": { "label": "Linux desktop", "protocol": "https", "onAutoForward": "silent" },
-    "6902": { "label": "Windows app sandbox", "protocol": "https", "onAutoForward": "silent" },
-    "6903": { "label": "macOS-style desktop", "protocol": "https", "onAutoForward": "silent" },
-    "8811": { "label": "MCP server", "protocol": "http", "onAutoForward": "silent" }
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
   },
-  "postCreateCommand": "chmod +x setup.sh && echo 'Run ./setup.sh to build and start the lab.'",
+  "forwardPorts": [
+    3000,
+    6901,
+    6902,
+    6903,
+    8811
+  ],
+  "portsAttributes": {
+    "3000": {
+      "label": "Portal",
+      "protocol": "http",
+      "onAutoForward": "openBrowserOnce"
+    },
+    "6901": {
+      "label": "Linux desktop",
+      "protocol": "https",
+      "onAutoForward": "silent"
+    },
+    "6902": {
+      "label": "Windows app sandbox",
+      "protocol": "https",
+      "onAutoForward": "silent"
+    },
+    "6903": {
+      "label": "macOS-style desktop",
+      "protocol": "https",
+      "onAutoForward": "silent"
+    },
+    "8811": {
+      "label": "MCP server",
+      "protocol": "http",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "chmod +x setup.sh .devcontainer/autostart.sh && echo 'Lab is starting... re-open this file in a few minutes.' > LOGIN.txt",
   "customizations": {
-    "vscode": { "extensions": ["ms-azuretools.vscode-docker", "ms-python.python"] }
-  }
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "ms-python.python"
+      ]
+    },
+    "codespaces": {
+      "openFiles": [
+        "LOGIN.txt"
+      ]
+    }
+  },
+  "postStartCommand": "setsid nohup bash .devcontainer/autostart.sh >/tmp/autostart.log 2>&1 &"
 }
